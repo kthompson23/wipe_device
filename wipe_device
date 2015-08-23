@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# wipe_device: Erase a device using three passes
+# Kenny Thompson <ken.thompson23@gmail.com>
+# 08/22/2015
+
+set -e
+
+if [ $EUID -ne 0 ]; then
+    echo "You must be root to run this script."
+    exit 1
+fi
+
+echo -n "Enter the device to wipe > "
+read device_name
+
+# -b does the file exist and is it a block special device?
+if [ ! -b "$device_name" ]; then
+    echo "'$device_name' does not exist."
+    exit 1
+fi
+
+echo
+fdisk -l $device_name
+
+echo "
+You are about to erase the contents of '$device_name'"
+
+read -p "Are you absolutely sure you want to continue (y/n) > "
+
+case $REPLY in
+    Y|y) ;;
+    *) echo "Exiting."
+        exit
+        ;;
+esac
+
+echo "
+Beginning first pass at $(date). Zeroing out the device."
+dd if=/dev/zero of=$device_name iflag=nocache oflag=direct bs=4096
+
+echo "
+Beginning second pass at $(date). Writing out random numbers to the device. This could take some time."
+dd if=/dev/urandom of=$device_name iflag=nocache oflag=direct bs=4096
+
+echo "
+Beginning final pass at $(date) Zeroing out the device."
+dd if=/dev/zero of=$device_name iflag=nocache oflag=direct bs=4096
+
+echo "
+Completed wipe of '$device_name' at $(date)"
